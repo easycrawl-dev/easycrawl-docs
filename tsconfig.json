@@ -22,6 +22,9 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "mdx-components.js", "app/layout.jsx", "next.config.js", "app/[[...mdxPath]]/page.jsx"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts",
+    // "mdx-components.js", "app/[lang]/layout.jsx", "next.config.js", "app/[lang]/[[...mdxPath]]/page.jsx"
+  ],
+  "exclude": ["node_modules", ".next"]
 }
