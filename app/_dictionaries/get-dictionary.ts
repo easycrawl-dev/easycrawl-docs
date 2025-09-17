@@ -14,7 +14,3 @@ export async function getDictionary(locale: string): Promise<Dictionary> {
 
   return dictionary
 }
-
-// export function getDirection(locale: string): 'ltr' | 'rtl' {
-//   return locale === 'es' ? 'rtl' : 'ltr'
-// }

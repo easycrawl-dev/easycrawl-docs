@@ -4,7 +4,6 @@ import {
   Footer,
   LastUpdated,
   Layout,
-  LocaleSwitch,
   Navbar
 } from 'nextra-theme-docs'
 import { Head } from 'nextra/components'
@@ -30,7 +29,7 @@ const navbar = (
     projectLink="https://github.com/easycrawl-dev"
     chatLink="https://t.me/easycrawl"
   >
-    <LocaleSwitch lite />
+    {/* <LocaleSwitch lite /> */}
   </Navbar>
 )
 
@@ -46,6 +45,13 @@ type LayoutProps = Readonly<{
 const RootLayout: FC<LayoutProps> = async ({ children, params }) => {
   const { lang } = await params
   const dictionary = await getDictionary(lang)
+  let pageMap = await getPageMap(`/${lang}`)
+
+  if (lang === 'en') {
+    pageMap = [
+      ...pageMap,
+    ]
+  }
 
   return (
     <html lang={lang} suppressHydrationWarning>
@@ -53,9 +59,9 @@ const RootLayout: FC<LayoutProps> = async ({ children, params }) => {
       <body>
         <Layout
           navbar={navbar}
-          pageMap={await getPageMap(`/${lang}`)}
+          pageMap={pageMap}
           footer={footer}
-          docsRepositoryBase="https://github.com/easycrawl-dev/easycrawl-docs"
+          docsRepositoryBase="https://github.com/easycrawl-dev/easycrawl-docs/blob/master"
           i18n={[
             { locale: 'en', name: 'English' },
             { locale: 'zh', name: '中文' }
