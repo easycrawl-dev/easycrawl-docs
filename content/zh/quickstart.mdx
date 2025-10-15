@@ -1,0 +1,135 @@
+# 快速开始
+欢迎来到 Easycrawl 的快速开始指南！在这个教程中，我们将引导您完成以下步骤：
+1. 获取 Easycrawl API 密钥
+2. 创建一次针对 Cloudflare 保护网站的爬取请求
+3. 等待爬虫任务完成
+4. 解析爬取结果并获取所需的数据
+
+***
+### 1. 获取 Easycrawl API 密钥
+首先你需要登录 [Easycrawl 控制台](https://easycrawl.dev/sign-in)，之后便可以在右上角的 API Key 处创建或是刷新你的 API 密钥：  
+![API Key 页面](/quickstart/quickstart-01-02.png)
+
+### 2. 创建爬取请求
+> Easycrawl 使用了和 Crawl4ai 几乎一样的 API 路径与数据结构，因此如果你之前使用过 Crawl4ai，那么你会发现 Easycrawl 的使用方式非常熟悉。
+
+下面是一个使用 Python 创建爬取请求的示例代码：  
+```python
+import requests
+
+API_KEY = "你的 API 密钥"
+
+def main():
+    url = "https://api.easycrawl.dev/crawl"
+    # 设置请求头，包含 API 密钥
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    # 定义爬取请求的参数
+    data = {
+        "urls": ["https://skin.land"],
+    }
+    # 发送 POST 请求以创建爬取任务
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        response.raise_for_status()  # 检查请求是否成功
+        print("爬取请求已创建，响应内容如下：")
+        print(response.json())
+    except requests.exceptions.RequestException as e:
+        print("创建爬取请求时出错:", e)
+
+if __name__ == "__main__":
+    main()
+```
+
+运行上述代码后，你将收到类似如下的响应，表示爬取任务已成功创建：  
+```json
+{
+  "task_id": "e05a76d4-017c-47ca-9538-0701b7c10647"
+}
+```
+
+### 3. 等待爬虫任务完成
+爬取任务将会有 4 种状态，分别是：
+- `pending`：任务已创建，但尚在队列中并未开始处理
+- `processing`：任务正在处理中
+- `completed`：任务已完成，可以获取结果
+- `failed`：任务处理失败
+
+你可以使用一个简单的轮询机制来检查任务状态，直到任务完成或失败。  
+
+
+### 4. 解析爬取结果并获取所需的数据
+一旦任务状态变为 `completed`，你就可以获取爬取结果了。以下是一个示例代码，展示如何获取并解析爬取结果：  
+
+```python
+import os
+import base64
+import requests
+
+API_KEY = "你的 API 密钥"
+
+def main():
+    task_id = "e05a76d4-017c-47ca-9538-0701b7c10647"
+    url = f"https://api.easycrawl.dev/task/{task_id}"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    while True:
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()  # 检查请求是否成功
+            task_info = response.json()
+            status = task_info.get("status")
+            print(f"当前任务状态: {status}")
+            if status == "completed":
+                if not os.path.exists(task_id):
+                    os.makedirs(task_id)
+                # 遍历结果
+                for result in task_info.get("results", []):
+                    url = result.get("url")
+                    # 将 url 转换为 base64 以用作文件夹名的一部分
+                    base64_url = base64.urlsafe_b64encode(url.encode()).decode()
+                    url_path = os.path.join(task_id, base64_url)
+                    if not os.path.exists(url_path):
+                        os.makedirs(url_path)
+                    # html 包含了爬取的 HTML 内容
+                    if result.get("html"):
+                        html_content = result["html"]
+                        with open(f"{url_path}/index.html", "w", encoding="utf-8") as f:
+                            f.write(html_content)
+                        print(f"爬取结果已保存到 {url_path}/index.html")
+                    # screenshot 包含了网页截图的数据，类似 data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB3gAAAONCAIAAAD
+                    if "screenshot" in result:
+                        screenshot_data = result["screenshot"].split(",")[1]  # 去掉 data:image/png;base64,
+                        screenshot_bytes = base64.b64decode(screenshot_data)
+                        with open(f"{url_path}/screenshot.png", "wb") as f:
+                            f.write(screenshot_bytes)
+                        print(f"网页截图已保存到 {url_path}/screenshot.png")
+                break
+            elif status == "failed":
+                print("任务处理失败，请检查请求参数或稍后重试。")
+                break
+            else:
+                print("任务仍在处理中，5 秒后再次检查...")
+                time.sleep(5)
+        except requests.exceptions.RequestException as e:
+            print("获取任务状态时出错:", e)
+            break
+
+if __name__ == "__main__":
+    main()
+```
+输出结果示例：
+```
+当前任务状态: completed
+爬取结果已保存到 e05a76d4-017c-47ca-9538-0701b7c10647/aHR0cHM6Ly9za2luLmxhbmQ=/index.html
+网页截图已保存到 e05a76d4-017c-47ca-9538-0701b7c10647/aHR0cHM6Ly9za2luLmxhbmQ=/screenshot.png
+```
+查看网页截图可以看到成功突破了 Cloudflare 的保护：  
+![突破 Cloudflare 保护](/quickstart/quickstart-04-01.png)
+
+> 如果使用类似 [Website Screenshot Online](https://websitescreenshot.online/) 等工具时，则会看到 Cloudflare 的验证码页面：  
+> ![Cloudflare 验证码页面](/quickstart/quickstart-04-02.png)

@@ -1,0 +1,130 @@
+# Quickstart
+Welcome to the Easycrawl Quickstart guide! This guide will walk you through the process of setting up and using Easycrawl, an AI-friendly web scraping tool that can bypass Cloudflare and Google reCAPTCHA protections. In this tutorial, we will cover the following steps:
+1. Obtain your Easycrawl API key
+2. Create a crawl request for a Cloudflare-protected website
+3. Wait for the crawl task to complete
+4. Parse the crawl results and retrieve the desired data
+
+***
+### 1. Obtain your Easycrawl API key
+First, you need to log in to the [Easycrawl Console](https://easycrawl.dev/sign-in). Once logged in, you can create or refresh your API key at the top right corner under the API Key section:  
+![API Key Page](/quickstart/quickstart-01-02.png)
+
+### 2. Create a crawl request
+> Easycrawl uses an API path and data structure that is almost identical to Crawl4ai. Therefore, if you have used Crawl4ai before, you will find Easycrawl very familiar.
+
+Here is an example code snippet in Python to create a crawl request:  
+```python
+import requests
+
+API_KEY = "YOUR_API_KEY"
+
+def main():
+    url = "https://api.easycrawl.dev/crawl"
+    # Set the request headers, including the API key
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    # Define the parameters for the crawl request
+    data = {
+        "urls": ["https://skin.land"],
+    }
+    # Send a POST request to create the crawl task
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        response.raise_for_status()  # Check if the request was successful
+        print("Crawl request created successfully. Response:")
+        print(response.json())
+    except requests.exceptions.RequestException as e:
+        print("Error creating crawl request:", e)
+
+if __name__ == "__main__":
+    main()
+```
+
+After running the above code, you should receive a response similar to the following, indicating that the crawl task has been successfully created:  
+```json
+{
+  "task_id": "e05a76d4-017c-47ca-9538-0701b7c10647"
+}
+```
+
+### 3. Wait for the crawl task to complete
+The crawl task can have 4 different statuses:
+- `pending`: The task has been created but is still in the queue and has not started processing
+- `processing`: The task is currently being processed
+- `completed`: The task has been completed, and results can be retrieved
+- `failed`: The task processing has failed
+
+You can use a simple polling mechanism to check the task status until it is either completed or failed.
+
+### 4. Parse the crawl results
+Once the task status is `completed`, you can retrieve the crawl results. Here is an example code snippet in Python to check the task status and parse the results:  
+```python
+import os
+import base64
+import requests
+
+API_KEY = "YOUR_API_KEY"
+
+def main():
+    task_id = "e05a76d4-017c-47ca-9538-0701b7c10647"
+    url = f"https://api.easycrawl.dev/crawl/{task_id}"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    while True:
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            task_info = response.json()
+            status = task_info.get("status")
+            print(f"Current task status: {status}")
+            if status == "completed":
+                # Process the results
+                if not os.path.exists(task_id):
+                    os.makedirs(task_id)
+                for result in task_info.get("results", []):
+                    url = result.get("url")
+                    # Convert the URL to a base64 string to use as part of the folder name
+                    base64_url = base64.urlsafe_b64encode(url.encode()).decode()
+                    url_path = os.path.join(task_id, base64_url)
+                    if not os.path.exists(url_path):
+                        os.makedirs(url_path)
+                    # html contains the crawled HTML content
+                    if result.get("html"):
+                        html_content = result["html"]
+                        with open(f"{url_path}/index.html", "w", encoding="utf-8") as f:
+                            f.write(html_content)
+                        print(f"Crawl results saved to {url_path}/index.html")
+                    # screenshot contains the webpage screenshot data
+                    if "screenshot" in result:
+                        screenshot_data = result["screenshot"].split(",")[1]  # Remove data:image/png;base64,
+                        screenshot_bytes = base64.b64decode(screenshot_data)
+                        with open(f"{url_path}/screenshot.png", "wb") as f:
+                            f.write(screenshot_bytes)
+                        print(f"Webpage screenshot saved to {url_path}/screenshot.png")
+                break
+            elif status == "failed":
+                print("Task processing failed. Please check the request parameters or try again later.")
+                break
+        except requests.exceptions.RequestException as e:
+            print("Error checking task status:", e)
+            break
+
+if __name__ == "__main__":
+    main()
+```
+Output example:
+```
+Current task status: completed
+Crawl results saved to e05a76d4-017c-47ca-9538-0701b7c10647/aHR0cHM6Ly9za2luLmxhbmQ=/index.html
+Webpage screenshot saved to e05a76d4-017c-47ca-9538-0701b7c10647/aHR0cHM6Ly9za2luLmxhbmQ=/screenshot.png
+```
+You can view the webpage screenshot to see that the Cloudflare protection has been successfully bypassed:  
+![Cloudflare Bypass](/quickstart/quickstart-04-01.png)
+
+> If you use tools like [Website Screenshot Online](https://websitescreenshot.online/), you will see the Cloudflare CAPTCHA page instead:  
+> ![Cloudflare CAPTCHA Page](/quickstart/quickstart-04-02.png)
