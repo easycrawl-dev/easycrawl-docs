@@ -18,8 +18,8 @@ const TelegramIcon: React.FC<{ className?: string }> = ({ className }) => {
     <svg 
       xmlns="http://www.w3.org/2000/svg" 
       viewBox="0 0 496 512" 
-      width="24" 
-      height="24" 
+      width="25" 
+      height="25" 
       fill="currentColor"
       className={className}
     >
@@ -195,7 +195,7 @@ const navbar = (
   </Navbar>
 )
 
-const footer = <Footer>MIT {new Date().getFullYear()} © Nextra.</Footer>
+const footer = <Footer>© {new Date().getFullYear()} Easycrawl. All rights reserved. </Footer>
 
 type LayoutProps = Readonly<{
   children: ReactNode
